@@ -9,14 +9,14 @@ from email.mime.application import MIMEApplication
 import db
 import xml_generator as xg
 
-bot = Bot('5994486631:AAFyPqSDTC6ydxZSQRwxXVjKzBkyDiAsZCU')
+bot = Bot('')
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
-admin_id = 716532569
-admin_id1 = 716532569
-admin_id2 = 716532569
-admin_id3 = 716532569
+admin_id = 
+admin_id1 = 
+admin_id2 = 
+admin_id3 = 
 
 
 class UserConversation(StatesGroup):
