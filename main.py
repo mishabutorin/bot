@@ -2,8 +2,12 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 
 import db
+import xml.etree.ElementTree as ET
 
 bot = Bot('5994486631:AAFyPqSDTC6ydxZSQRwxXVjKzBkyDiAsZCU')
 storage = MemoryStorage()
@@ -21,8 +25,41 @@ class UserConversation(StatesGroup):
     branch = State()
     object = State()
     question = State()
-    # number_phone_or_email = State()
     quit = State()
+
+
+# Функция для отправки письма на почту с вложением XML-файла
+def send_email_with_attachment(subject, attachment_path, photo_path):
+    smtp_server = 'smtp.yandex.ru'  # Укажите адрес SMTP-сервера
+    smtp_port = 587  # Укажите порт SMTP-сервера
+    smtp_login = 'mushaspb@yandex.ru'  # Укажите адрес электронной почты отправителя
+    smtp_password = 'misha2306'  # Укажите пароль от электронной почты отправителя
+    recipient = 'mushaspb@yandex.ru'  # Укажите адрес электронной почты получателя
+
+    # Создание сообщения
+    msg = MIMEMultipart()
+    msg['From'] = smtp_login
+    msg['To'] = recipient
+    msg['Subject'] = subject
+    # msg.attach(MIMEText('plain'))
+
+    # Добавление XML-файла в виде вложения
+    with open(attachment_path, 'rb') as attachment_file:
+        attachment = MIMEApplication(attachment_file.read(), _subtype='xml')
+        attachment.add_header('Content-Disposition', 'attachment', filename=attachment_path)
+        msg.attach(attachment)
+
+    if photo_path:
+        with open(photo_path, 'rb') as photo_file:
+            photo_attachment = MIMEApplication(photo_file.read(), _subtype='jpg')
+            photo_attachment.add_header('Content-Disposition', 'attachment', filename='photo.jpg')
+            msg.attach(photo_attachment)
+
+    # Отправка письма через SMTP-сервер
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_login, smtp_password)
+        server.send_message(msg)
 
 
 def get_admin_id(category: str) -> int:
@@ -110,12 +147,12 @@ async def handle_question(message: types.Message, state: FSMContext):
         photo_extension = photo.file_path.split('.')[-1]  # получаем расширение файла
         photo_path = f"photos/{photo_file}.{photo_extension}"
         await photo.download(destination_file=photo_path)
-        await state.update_data(photo_path=photo_path)
+        await state.update_data(photo=message.photo, photo_path=photo_path)
         await message.answer('Пожалуйста, введите текст вопроса.')
 
 
 @dp.message_handler()
-async def handle_question_only(message: types.Message, state: FSMContext):
+async def handle_answer_only(message: types.Message, state: FSMContext):
     await state.update_data(user_question=message.text)
     await UserConversation.next()
 
@@ -151,6 +188,47 @@ async def handle_exit(message: types.Message, state: FSMContext):
         else:
             await bot.send_message(chat_id=get_admin_id(data["user_category"]), text=admin_message)
 
+            async def generate_xml(user_data):
+                # Создание корневого элемента таблицы
+                table = ET.Element('table')
+
+                # Создание элемента для каждой записи данных
+                for data in user_data:
+                    entry = ET.SubElement(table, 'entry')
+
+                    # Добавление элементов данных в каждую запись
+                    for key, value in data.items():
+                        element = ET.SubElement(entry, key)
+                        element.text = str(value)
+
+                # Создание XML-дерева
+                tree = ET.ElementTree(table)
+
+                # Сохранение XML-дерева в файл
+                tree.write('user_data.xml', encoding='utf-8', xml_declaration=True)
+
+            # Пример данных пользователя
+            user_data = [
+                {
+                    'user_id': user_id,
+                    'user_category': user_category,
+                    'user_object': user_object,
+                    'user_branch': user_branch,
+                    'firstname_lastname_info': user_firstname_lastname,
+                    'user_number_phone_or_email': user_number_phone_or_email,
+                    'user_question': user_question
+                }
+            ]
+
+            # Генерация XML-таблицы
+            await generate_xml(user_data)
+
+    # Отправка сообщения на почту с вложением XML-файла
+    email_subject = 'Новое сообщение от пользователя'
+    xml_attachment_path = 'user_data.xml'  # Укажите путь к XML-файлу
+    photo_path = data.get("photo_path")
+    send_email_with_attachment(email_subject, xml_attachment_path, photo_path)
+
     await state.finish()
     await message.answer('Спасибо! Ваш вопрос был отправлен на рассмотрение!')
 
@@ -158,6 +236,27 @@ async def handle_exit(message: types.Message, state: FSMContext):
 @dp.message_handler(content_types=types.ContentTypes.TEXT)
 async def handle_text(message: types.Message):
     await message.answer('Пожалуйста, используйте команду /start для начала диалога.')
+
+
+@dp.errors_handler(exception=Exception)
+async def handle_errors(update, exception):
+    # Обработчик ошибок и исключений
+    print(f"Ошибка обработки обновления:\n{update}\n{exception}")
+
+    # Если возникло исключение smtplib.SMTPAuthenticationError, то скорее всего проблема с аутентификацией
+    if isinstance(exception, smtplib.SMTPAuthenticationError):
+        print("Ошибка аутентификации. Проверьте правильность адреса электронной почты и пароля отправителя.")
+    # Если возникло исключение FileNotFoundError, то скорее всего указан неправильный путь к файлу вложения или фотографии
+    elif isinstance(exception, FileNotFoundError):
+        print("Файл не найден. Проверьте правильность пути к файлу вложения или фотографии.")
+    # Если возникло исключение smtplib.SMTPException, то скорее всего есть проблемы с SMTP-сервером
+    elif isinstance(exception, smtplib.SMTPException):
+        print("Ошибка SMTP-сервера. Проверьте настройки SMTP и подключение к серверу.")
+    # Если возникло другое исключение, то вывести общее сообщение об ошибке
+    else:
+        print("Произошла ошибка при отправке электронной почты.")
+
+    return True
 
 
 if __name__ == '__main__':
