@@ -7,7 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
 import db
-import xml.etree.ElementTree as ET
+import xml_generator as xg
 
 bot = Bot('5994486631:AAFyPqSDTC6ydxZSQRwxXVjKzBkyDiAsZCU')
 storage = MemoryStorage()
@@ -188,40 +188,9 @@ async def handle_exit(message: types.Message, state: FSMContext):
         else:
             await bot.send_message(chat_id=get_admin_id(data["user_category"]), text=admin_message)
 
-            async def generate_xml(user_data):
-                # Создание корневого элемента таблицы
-                table = ET.Element('table')
-
-                # Создание элемента для каждой записи данных
-                for data in user_data:
-                    entry = ET.SubElement(table, 'entry')
-
-                    # Добавление элементов данных в каждую запись
-                    for key, value in data.items():
-                        element = ET.SubElement(entry, key)
-                        element.text = str(value)
-
-                # Создание XML-дерева
-                tree = ET.ElementTree(table)
-
-                # Сохранение XML-дерева в файл
-                tree.write('user_data.xml', encoding='utf-8', xml_declaration=True)
-
-            # Пример данных пользователя
-            user_data = [
-                {
-                    'user_id': user_id,
-                    'user_category': user_category,
-                    'user_object': user_object,
-                    'user_branch': user_branch,
-                    'firstname_lastname_info': user_firstname_lastname,
-                    'user_number_phone_or_email': user_number_phone_or_email,
-                    'user_question': user_question
-                }
-            ]
-
-            # Генерация XML-таблицы
-            await generate_xml(user_data)
+    xg.generate_xml(user_id, user_category, user_object, user_branch, user_firstname_lastname,
+                    user_number_phone_or_email,
+                    user_question)
 
     # Отправка сообщения на почту с вложением XML-файла
     email_subject = 'Новое сообщение от пользователя'
