@@ -33,7 +33,7 @@ def send_email_with_attachment(subject, attachment_path, photo_path):
     smtp_server = 'smtp.yandex.ru'  # Укажите адрес SMTP-сервера
     smtp_port = 587  # Укажите порт SMTP-сервера
     smtp_login = 'mushaspb@yandex.ru'  # Укажите адрес электронной почты отправителя
-    smtp_password = 'misha2306'  # Укажите пароль от электронной почты отправителя
+    smtp_password = ''  # Укажите пароль от электронной почты отправителя
     recipient = 'mushaspb@yandex.ru'  # Укажите адрес электронной почты получателя
 
     # Создание сообщения
