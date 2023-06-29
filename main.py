@@ -30,8 +30,8 @@ class UserConversation(StatesGroup):
 
 # Функция для отправки письма на почту с вложением XML-файла
 def send_email_with_attachment(subject, attachment_path, photo_path):
-    smtp_server = 'smtp.yandex.ru'  # Укажите адрес SMTP-сервера
-    smtp_port = 587  # Укажите порт SMTP-сервера
+    smtp_server = ''  # Укажите адрес SMTP-сервера
+    smtp_port =   # Укажите порт SMTP-сервера
     smtp_login = ''  # Укажите адрес электронной почты отправителя
     smtp_password = ''  # Укажите пароль от электронной почты отправителя
     recipient = ''  # Укажите адрес электронной почты получателя
